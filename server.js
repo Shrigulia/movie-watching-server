@@ -1,40 +1,28 @@
 const express = require('express');
 const http = require('http');
-const { Server } = require('socket.io');
+const { Server } = require('socket.io'); // updated import
 const app = express();
 const server = http.createServer(app);
+
+// ✅ Enable CORS for all origins in Socket.IO
 const io = new Server(server, {
-    cors: { origin: '*', methods: ['GET','POST'] }
+    cors: {
+        origin: "*", // allow all origins
+        methods: ["GET", "POST"], // allowed methods
+    },
 });
 
-// app.use(express.static(__dirname)); // serve html, css, js
+app.use(express.static('public'));
 
-const rooms = {};
+io.on('connection', (socket) => {
+    console.log('A user connected:', socket.id);
 
-io.on('connection', socket => {
-
-    socket.on('join', room => {
-        socket.join(room);
-        if (!rooms[room]) rooms[room] = [];
-        rooms[room].push(socket.id);
-        io.to(room).emit('joined', { users: rooms[room].length });
-    });
-
-    socket.on('movie-event', data => socket.to(data.room).emit('movie-event', data));
-
-    socket.on('chat', data => io.to(data.room).emit('chat', data));
-
-    socket.on('offer', data => socket.to(data.room).emit('offer', data));
-    socket.on('answer', data => socket.to(data.room).emit('answer', data));
-    socket.on('ice-candidate', data => socket.to(data.room).emit('ice-candidate', data));
-
-    socket.on('disconnect', () => {
-        for (let room in rooms) {
-            rooms[room] = rooms[room].filter(id => id !== socket.id);
-            if (rooms[room].length===0) delete rooms[room];
-        }
-    });
+    socket.on('addDare', (dare) => io.emit('updateDare', dare));
+    socket.on('addTruth', (truth) => io.emit('updateTruth', truth));
+    socket.on('addDiary', (diary) => io.emit('updateDiary', diary));
+    socket.on('deleteItem', ({ type, index }) => io.emit('deleteItem', { type, index }));
+    socket.on('editItem', ({ type, index, newValue }) => io.emit('editItem', { type, index, newValue }));
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server running on port ${ PORT }`))
